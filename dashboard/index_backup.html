@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>دیده‌بان | داشبورد اخبار زنده</title>
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Google Fonts – Vazirmatn (Persian) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ── Reset & base ──────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0d0f14;
+      --panel-bg:  #13161e;
+      --card-bg:   #1b1f2b;
+      --card-hover:#21263a;
+      --border:    #2a2f42;
+      --text:      #e4e6f0;
+      --muted:     #6b7280;
+      --accent:    #3b82f6;
+      --red:       #ef4444;
+      --gold:      #f59e0b;
+      --gold-dim:  rgba(245,158,11,.12);
+      --tg-color:  #229ed9;
+      --tw-color:  #1d9bf0;
+      --live-red:  #ff3b30;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Vazirmatn', system-ui, sans-serif;
+      font-size: 14px;
+      overflow: hidden;
+    }
+
+    /* ── Header ────────────────────────────────────────────────────────── */
+    #header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 18px;
+      height: 46px;
+      background: #090b10;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      gap: 12px;
+    }
+
+    #header .logo {
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: .5px;
+      color: #fff;
+    }
+    #header .logo span { color: var(--red); }
+
+    .live-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--live-red);
+      letter-spacing: 1px;
+    }
+    .live-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--live-red);
+      animation: pulse 1.4s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%,100% { opacity: 1; transform: scale(1); }
+      50%      { opacity: .4; transform: scale(.7); }
+    }
+
+    #status-text {
+      font-size: 11px;
+      color: var(--muted);
+      min-width: 160px;
+      text-align: left;
+      direction: ltr;
+    }
+
+    /* ── Layout ────────────────────────────────────────────────────────── */
+    #layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      height: calc(100vh - 46px);
+      gap: 0;
+    }
+
+    .panel {
+      display: flex;
+      flex-direction: column;
+      background: var(--panel-bg);
+      border-left: 1px solid var(--border);
+      overflow: hidden;
+    }
+    .panel:last-child { border-left: none; }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      background: #0f1118;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .panel-header .icon { font-size: 16px; }
+    .panel-header h2 { font-size: 13px; font-weight: 600; color: #fff; }
+    .panel-header .count {
+      margin-right: auto;
+      font-size: 11px;
+      color: var(--muted);
+      background: var(--border);
+      padding: 1px 7px;
+      border-radius: 20px;
+    }
+
+    /* ── News feeds ─────────────────────────────────────────────────────── */
+    .feed {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .feed::-webkit-scrollbar { width: 4px; }
+    .feed::-webkit-scrollbar-track { background: transparent; }
+    .feed::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    /* ── News card ──────────────────────────────────────────────────────── */
+    .news-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      direction: rtl;
+      text-align: right;
+      transition: background .15s;
+      animation: slideIn .3s ease;
+    }
+    .news-card:hover { background: var(--card-hover); }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Official statement variant */
+    .news-card.official {
+      border-right: 3px solid var(--gold);
+      background: linear-gradient(135deg, var(--gold-dim), var(--card-bg));
+    }
+
+    .card-meta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 6px;
+      flex-wrap: wrap;
+    }
+
+    .badge-channel {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 20px;
+      color: #fff;
+      white-space: nowrap;
+    }
+    .badge-tg  { background: var(--tg-color); }
+    .badge-tw  { background: var(--tw-color); }
+
+    .badge-official {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 20px;
+      color: #000;
+      background: var(--gold);
+      white-space: nowrap;
+    }
+
+    .card-time {
+      font-size: 10px;
+      color: var(--muted);
+      margin-right: auto;
+      direction: ltr;
+    }
+
+    .card-images {
+      margin-top: 8px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .card-img {
+      max-width: 100%;
+      max-height: 220px;
+      border-radius: 6px;
+      object-fit: cover;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .card-img:hover { opacity: 0.85; cursor: zoom-in; }
+
+    /* Lightbox */
+    #lightbox {
+      display: none; position: fixed; inset: 0; z-index: 9999;
+      background: rgba(0,0,0,0.92);
+      align-items: center; justify-content: center;
+      backdrop-filter: blur(4px);
+    }
+    #lightbox.open { display: flex; }
+    #lightbox img {
+      max-width: 92vw; max-height: 92vh;
+      border-radius: 8px;
+      box-shadow: 0 0 60px rgba(0,0,0,0.8);
+      object-fit: contain;
+    }
+    #lightbox-close {
+      position: fixed; top: 20px; right: 24px;
+      color: #fff; font-size: 32px; cursor: pointer;
+      line-height: 1; opacity: 0.8; z-index: 10000;
+      background: none; border: none;
+    }
+    #lightbox-close:hover { opacity: 1; }
+    #lightbox-caption {
+      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+      color: #aaa; font-size: 12px; text-align: center; max-width: 80vw;
+    }
+    .card-videos { margin-top: 8px; display: flex; flex-direction: column; gap: 8px; }
+    .card-video {
+      width: 100%;
+      max-height: 260px;
+      border-radius: 8px;
+      background: #000;
+      display: block;
+      outline: none;
+    }
+    .card-video::-webkit-media-controls { display: flex !important; }
+    .card-video::-webkit-media-controls-volume-slider { display: flex !important; }
+
+    .card-text {
+      font-size: 13px;
+      line-height: 1.7;
+      color: var(--text);
+      word-break: break-word;
+      white-space: pre-wrap;
+    }
+
+    /* ── Middle panel: map ──────────────────────────────────────────────── */
+    #map-panel { border-left: 1px solid var(--border); }
+
+    #map {
+      flex: 1;
+      min-height: 0;
+    }
+
+    /* Override Leaflet dark-theme popups */
+    .leaflet-popup-content-wrapper {
+      background: #1b1f2b;
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-family: 'Vazirmatn', sans-serif;
+      direction: rtl;
+    }
+    .leaflet-popup-tip { background: #1b1f2b; }
+    .leaflet-popup-content { font-size: 12px; line-height: 1.6; }
+    .popup-name { font-weight: 700; font-size: 13px; margin-bottom: 4px; color: var(--gold); }
+    .popup-snippet { color: var(--text); }
+    .popup-time { font-size: 10px; color: var(--muted); margin-top: 4px; direction: ltr; }
+
+    /* ── Locations list ─────────────────────────────────────────────────── */
+    #locations-panel {
+      flex-shrink: 0;
+      max-height: 200px;
+      overflow-y: auto;
+      border-top: 1px solid var(--border);
+      background: #0f1118;
+      padding: 8px;
+    }
+    #locations-panel::-webkit-scrollbar { width: 4px; }
+    #locations-panel::-webkit-scrollbar-thumb { background: var(--border); }
+
+    #locations-header {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      padding: 2px 4px 6px;
+    }
+
+    .loc-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 6px;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: default;
+      transition: background .1s;
+    }
+    .loc-item:hover { background: var(--card-bg); }
+
+    .loc-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--red);
+      flex-shrink: 0;
+    }
+    .loc-name { flex: 1; }
+    .loc-del {
+      cursor: pointer;
+      font-size: 13px;
+      color: var(--muted);
+      background: none;
+      border: none;
+      padding: 0 2px;
+      line-height: 1;
+      transition: color .1s;
+    }
+    .loc-del:hover { color: var(--red); }
+
+    /* ── Empty state ────────────────────────────────────────────────────── */
+    .empty {
+      text-align: center;
+      color: var(--muted);
+      font-size: 12px;
+      padding: 24px 12px;
+    }
+
+    /* ── Connection indicator ───────────────────────────────────────────── */
+    #conn-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--muted);
+      flex-shrink: 0;
+      transition: background .4s;
+    }
+    #conn-dot.connected    { background: #22c55e; }
+    #conn-dot.disconnected { background: var(--red); }
+  </style>
+</head>
+<body>
+
+<!-- ══ Header ════════════════════════════════════════════════════════════ -->
+<div id="header">
+  <div class="logo">دیده<span>بان</span></div>
+  <div class="live-badge">
+    <div class="live-dot"></div>
+    LIVE
+  </div>
+  <div style="display:flex;align-items:center;gap:6px;margin-right:auto">
+    <div id="conn-dot"></div>
+    <div id="status-text">در حال اتصال…</div>
+  </div>
+</div>
+
+<!-- ══ Main layout ════════════════════════════════════════════════════════ -->
+<div id="layout">
+
+  <!-- ── Left panel: Telegram ───────────────────────────────────────── -->
+  <div class="panel">
+    <div class="panel-header">
+      <span class="icon">✈️</span>
+      <h2>تلگرام</h2>
+      <span class="count" id="tg-count">0</span>
+    </div>
+    <div class="feed" id="tg-feed">
+      <div class="empty">در انتظار اخبار…</div>
+    </div>
+  </div>
+
+  <!-- ── Middle panel: Map ──────────────────────────────────────────── -->
+  <div class="panel" id="map-panel">
+    <div class="panel-header">
+      <span class="icon">🗺️</span>
+      <h2>نقشه رویدادها</h2>
+      <span class="count" id="loc-count">0</span>
+    </div>
+    <div id="map"></div>
+    <div id="locations-panel">
+      <div id="locations-header">📍 مکان‌های فعال</div>
+      <div id="loc-list"><div class="empty" style="padding:8px 4px">هیچ مکانی ثبت نشده</div></div>
+    </div>
+  </div>
+
+  <!-- ── Right panel: Twitter / X ───────────────────────────────────── -->
+  <div class="panel">
+    <div class="panel-header">
+      <span class="icon">𝕏</span>
+      <h2>توییتر / X</h2>
+      <span class="count" id="tw-count">0</span>
+    </div>
+    <div class="feed" id="tw-feed">
+      <div class="empty">در انتظار اخبار…</div>
+    </div>
+  </div>
+
+</div><!-- /#layout -->
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════
+//  State
+// ═══════════════════════════════════════════════════════════════════════════
+const state = {
+  tgItems: [],   // [{id, channel, text, timestamp, official}]
+  twItems: [],
+  locations: {}, // {id: {id, name, lat, lon, text_snippet, timestamp}}
+  markers: {},   // {id: L.circleMarker}
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  Leaflet map
+// ═══════════════════════════════════════════════════════════════════════════
+const map = L.map('map', {
+  center: [32, 42],
+  zoom: 5,
+  zoomControl: true,
+});
+
+// Dark background (no labels)
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', {
+  attribution: '&copy; OSM &copy; CARTO',
+  subdomains: 'abcd',
+  maxZoom: 19,
+}).addTo(map);
+
+// Persian labels via Wikimedia Maps (supports lang=fa)
+L.tileLayer('https://maps.wikimedia.org/osm-intl/{z}/{x}/{y}.png?lang=fa', {
+  attribution: '&copy; Wikimedia Maps',
+  maxZoom: 19,
+  opacity: 0.8,
+}).addTo(map);
+
+// ── MahsaAlert SVG icons (inline, no CORS) ───────────────────────────────────
+function makeSvgIcon(emoji, bgColor, size=32) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+    <circle cx="${size/2}" cy="${size/2}" r="${size/2-1}" fill="${bgColor}" stroke="white" stroke-width="1.5" opacity="0.92"/>
+    <text x="${size/2}" y="${size/2+5}" text-anchor="middle" font-size="${size*0.5}px">${emoji}</text>
+  </svg>`;
+  const url = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)));
+  return L.icon({ iconUrl: url, iconSize: [size, size], iconAnchor: [size/2, size/2], popupAnchor: [0, -size/2] });
+}
+
+const ICONS = {
+  confirmed: makeSvgIcon('💥', '#cc0000', 34),
+  unconfirmed: makeSvgIcon('🎯', '#cc6600', 30),
+  missile: makeSvgIcon('🚀', '#880000', 32),
+  radar: makeSvgIcon('📡', '#444400', 30),
+  nuclear: makeSvgIcon('☢️', '#006600', 30),
+  military: makeSvgIcon('⚔️', '#550055', 30),
+};
+
+function getWarIcon(props) {
+  const name = (props['name:fa'] || '');
+  if (name.includes('رادار')) return ICONS.radar;
+  if (name.includes('موشک')) return ICONS.missile;
+  if (name.includes('هسته') || name.includes('اتمی')) return ICONS.nuclear;
+  if (name.includes('پایگاه') || name.includes('قرارگاه')) return ICONS.military;
+  if (props.status === 'تایید شده') return ICONS.confirmed;
+  return ICONS.unconfirmed;
+}
+
+// ── Load MahsaAlert war targets (layer 32) ──────────────────────────────────
+async function loadMahsaAlertData() {
+  try {
+    const res = await fetch('https://mahsaalert.hel1.your-objectstorage.com/prod/sources/layers/32/targets-26-02.geojson');
+    const data = await res.json();
+    let count = 0;
+    data.features.forEach(f => {
+      if (f.geometry?.type !== 'Point') return;
+      const [lon, lat] = f.geometry.coordinates;
+      const name = f.properties['name:fa'] || f.properties.name || 'هدف';
+      const status = f.properties.status || '';
+      const sources = f.properties.sources || f.properties.geolocates || '';
+      const icon = getWarIcon(f.properties);
+      const marker = L.marker([lat, lon], { icon }).addTo(map);
+      const srcLink = sources ? `<br><a href="${sources}" target="_blank" style="color:#aaa;font-size:10px">منبع ↗</a>` : '';
+      marker.bindPopup(`<div style="direction:rtl;min-width:160px">
+        <b>${name}</b><br>
+        <small style="color:${status==='تایید شده'?'#f43f5e':'#f97316'}">${status}</small><br>
+        <span style="font-size:10px;color:#94a3b8">🔗 منبع: MahsaAlert</span>
+        ${srcLink}
+      </div>`);
+      count++;
+    });
+    console.log(`MahsaAlert: loaded ${count} war targets`);
+  } catch(e) {
+    console.warn('MahsaAlert data failed:', e);
+  }
+}
+loadMahsaAlertData();
+
+// ── WarStrikes.com — Global strike trajectories ───────────────────────────────
+async function loadWarStrikesData() {
+  try {
+    const res = await fetch('https://warstrikes.com/api/events');
+    const data = await res.json();
+    let count = 0;
+    (data.events || []).forEach(e => {
+      const iLat = e.impact_lat, iLon = e.impact_lng;
+      const oLat = e.origin_lat, oLon = e.origin_lng;
+      if (!iLat || !iLon || iLat === 0) return;
+
+      // Impact point — red pulsing circle
+      const impact = L.circleMarker([iLat, iLon], {
+        radius: 8, fillColor: '#ff2222', color: '#ff0000',
+        weight: 2, opacity: 0.9, fillOpacity: 0.75,
+      }).addTo(map);
+      const pop = `<div style="direction:rtl;font-family:inherit;min-width:200px">
+        <b style="font-size:12px;color:#f43f5e">💥 رویداد نظامی</b><br>
+        <span style="font-size:12px;color:#e2e8f0">${e.title||'حمله'}</span><br>
+        <span style="font-size:11px;color:#94a3b8">${(e.summary||'').slice(0,150)}</span><br>
+        <span style="font-size:10px;color:#475569">📅 ${(e.published_at||'').slice(0,10)}</span><br>
+        <a href="${e.link_news||'#'}" target="_blank" style="color:#38bdf8;font-size:10px">🔗 منبع: WarStrikes ↗</a>
+      </div>`;
+      impact.bindPopup(pop);
+
+      // Trajectory arrow — dashed blue line from origin to impact
+      if (oLat && oLon && oLat !== 0 && oLon !== 0) {
+        L.polyline([[oLat, oLon], [iLat, iLon]], {
+          color: '#3b82f6', weight: 1.5, opacity: 0.6,
+          dashArray: '6, 10',
+        }).addTo(map);
+        // Origin dot
+        L.circleMarker([oLat, oLon], {
+          radius: 4, fillColor: '#3b82f6', color: '#2563eb',
+          weight: 1, opacity: 0.7, fillOpacity: 0.5,
+        }).addTo(map);
+      }
+      count++;
+    });
+    console.log(`WarStrikes: ${count} events loaded`);
+    document.getElementById('ws-count') && (document.getElementById('ws-count').textContent = count);
+  } catch(e) { console.warn('WarStrikes failed:', e); }
+}
+loadWarStrikesData();
+setInterval(loadWarStrikesData, 5 * 60 * 1000);
+
+// ── INSS Lion's Roar — Iranian Attacks 2026 ───────────────────────────────────
+async function loadINSSIranianAttacks() {
+  try {
+    const url = 'https://services-eu1.arcgis.com/cOhMqNf3ihcdtO7J/arcgis/rest/services/IranianAttack2026/FeatureServer/0/query?where=1%3D1&outFields=*&f=geojson';
+    const res = await fetch(url);
+    const data = await res.json();
+    let count = 0;
+    (data.features || []).forEach(f => {
+      if (f.geometry?.type !== 'Point') return;
+      const [lon, lat] = f.geometry.coordinates;
+      const p = f.properties;
+      const marker = L.circleMarker([lat, lon], {
+        radius: 9, fillColor: '#f97316', color: '#ea580c',
+        weight: 2, opacity: 0.9, fillOpacity: 0.7,
+      }).addTo(map);
+      marker.bindPopup(`<div style="direction:rtl;min-width:180px">
+        <b style="color:#f97316">🇮🇷 حمله ایران</b><br>
+        <b>${p.TargeteSite || ''}</b><br>
+        📍 ${p.Location || ''}<br>
+        📅 ${p.Date || ''}<br>
+        ${p.Notes ? `📝 ${p.Notes}<br>` : ''}
+        <span style="font-size:10px;color:#94a3b8">🔗 منبع: INSS</span>
+      </div>`);
+      count++;
+    });
+    console.log(`INSS Iranian attacks: ${count}`);
+  } catch(e) { console.warn('INSS Iranian attacks failed:', e); }
+}
+loadINSSIranianAttacks();
+
+// ── INSS — IDF/US Strikes on Iran 2026 ───────────────────────────────────────
+async function loadINSSIDFStrikes() {
+  try {
+    const url = 'https://services-eu1.arcgis.com/cOhMqNf3ihcdtO7J/arcgis/rest/services/IDF_US_Strikes_2026/FeatureServer/0/query?where=1%3D1&outFields=*&f=geojson';
+    const res = await fetch(url);
+    const data = await res.json();
+    let count = 0;
+    (data.features || []).forEach(f => {
+      if (f.geometry?.type !== 'Point') return;
+      const [lon, lat] = f.geometry.coordinates;
+      const p = f.properties;
+      const svgIcon = makeSvgIcon('✈️', '#1d4ed8', 28);
+      const marker = L.marker([lat, lon], { icon: svgIcon }).addTo(map);
+      marker.bindPopup(`<div style="direction:rtl;min-width:180px">
+        <b style="color:#38bdf8">✈️ حمله اسرائیل/آمریکا</b><br>
+        <b>${p.TargeteSite || p.Target || ''}</b><br>
+        📍 ${p.Location || ''}<br>
+        📅 ${p.Date || ''}<br>
+        ${p.Notes ? `📝 ${p.Notes}<br>` : ''}
+        <span style="font-size:10px;color:#94a3b8">🔗 منبع: INSS</span>
+      </div>`);
+      count++;
+    });
+    console.log(`INSS IDF/US strikes: ${count}`);
+  } catch(e) { console.warn('INSS IDF strikes failed:', e); }
+}
+loadINSSIDFStrikes();
+
+// ── INSS — US Bases in Middle East ───────────────────────────────────────────
+async function loadUSBases() {
+  try {
+    const url = 'https://services-eu1.arcgis.com/cOhMqNf3ihcdtO7J/arcgis/rest/services/US_bases_in_the_Middle_East/FeatureServer/0/query?where=1%3D1&outFields=*&f=geojson';
+    const res = await fetch(url);
+    const data = await res.json();
+    let count = 0;
+    (data.features || []).forEach(f => {
+      if (f.geometry?.type !== 'Point') return;
+      const [lon, lat] = f.geometry.coordinates;
+      const p = f.properties;
+      const svgIcon = makeSvgIcon('⭐', '#eab308', 26);
+      const marker = L.marker([lat, lon], { icon: svgIcon }).addTo(map);
+      marker.bindPopup(`<div style="direction:rtl;min-width:180px">
+        <b style="color:#eab308">⭐ پایگاه نظامی آمریکا</b><br>
+        <b>${p.Name || p.name || p.BaseName || ''}</b><br>
+        📍 ${p.Country || p.Location || ''}<br>
+        <span style="font-size:10px;color:#94a3b8">🔗 منبع: INSS</span>
+      </div>`);
+      count++;
+    });
+    console.log(`INSS US bases: ${count}`);
+  } catch(e) { console.warn('INSS US bases failed:', e); }
+}
+loadUSBases();
+
+function addMarker(loc) {
+  if (state.markers[loc.id]) return; // already on map
+
+  const marker = L.circleMarker([loc.lat, loc.lon], {
+    radius: 8,
+    fillColor: '#ef4444',
+    color: '#ff6b6b',
+    weight: 2,
+    opacity: 0.9,
+    fillOpacity: 0.75,
+  });
+
+  const time = formatTime(loc.timestamp);
+  marker.bindPopup(`
+    <div class="popup-name">📍 ${escHtml(loc.name)}</div>
+    <div class="popup-snippet">${escHtml(loc.text_snippet)}</div>
+    <div class="popup-time">${time}</div>
+  `);
+
+  marker.addTo(map);
+  state.markers[loc.id] = marker;
+}
+
+function removeMarker(id) {
+  if (state.markers[id]) {
+    map.removeLayer(state.markers[id]);
+    delete state.markers[id];
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  Rendering helpers
+// ═══════════════════════════════════════════════════════════════════════════
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function formatTime(ts) {
+  if (!ts) return '';
+  try {
+    const d = new Date(ts);
+    if (isNaN(d)) return ts;
+    return d.toLocaleString('fa-IR', {
+      month: 'short', day: 'numeric',
+      hour: '2-digit', minute: '2-digit',
+    });
+  } catch { return ts; }
+}
+
+function buildCard(item) {
+  const isOfficial = !!item.official;
+  const isTg       = item.source === 'telegram';
+
+  const badgeClass   = isTg ? 'badge-tg' : 'badge-tw';
+  const badgeLabel   = isTg ? `@${escHtml(item.channel)}` : escHtml(item.channel);
+  const officialHtml = isOfficial
+    ? `<span class="badge-official">🎙️ اظهار رسمی</span>`
+    : '';
+
+  return `
+    <div class="news-card${isOfficial ? ' official' : ''}" data-id="${escHtml(item.id)}">
+      <div class="card-meta">
+        <span class="badge-channel ${badgeClass}">${badgeLabel}</span>
+        ${officialHtml}
+        <span class="card-time">${formatTime(item.timestamp)}</span>
+      </div>
+      ${item.text ? `<div class="card-text">${escHtml(item.text)}</div>` : ''}
+      ${(item.images && item.images.length > 0) ? `
+        <div class="card-images">
+          ${item.images.map(src => `<img src="${escHtml(src)}" class="card-img" alt="تصویر خبر" loading="lazy" onerror="this.style.display='none'" onclick="openLightbox('${escHtml(src)}', '${escHtml(item.channel || '')}')">`).join('')}
+        </div>` : ''}
+      ${(item.videos && item.videos.length > 0) ? `
+        <div class="card-videos">
+          ${item.videos.map(v => `
+            <video class="card-video" controls controlsList="nodownload" preload="metadata" ${v.thumb ? `poster="${escHtml(v.thumb)}"` : ''}>
+              <source src="${escHtml(v.src)}" type="video/mp4">
+            </video>`).join('')}
+        </div>` : ''}
+    </div>`;
+}
+
+function prependCard(feedEl, item) {
+  // Remove empty placeholder if present
+  const empty = feedEl.querySelector('.empty');
+  if (empty) empty.remove();
+
+  // Avoid duplicates
+  if (feedEl.querySelector(`[data-id="${item.id}"]`)) return;
+
+  const div = document.createElement('div');
+  div.innerHTML = buildCard(item).trim();
+  feedEl.insertBefore(div.firstChild, feedEl.firstChild);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  Locations list
+// ═══════════════════════════════════════════════════════════════════════════
+function renderLocList() {
+  const locs = Object.values(state.locations);
+  const listEl = document.getElementById('loc-list');
+  document.getElementById('loc-count').textContent = locs.length;
+
+  if (!locs.length) {
+    listEl.innerHTML = '<div class="empty" style="padding:8px 4px">هیچ مکانی ثبت نشده</div>';
+    return;
+  }
+
+  listEl.innerHTML = locs.map(loc => `
+    <div class="loc-item" data-loc-id="${escHtml(loc.id)}">
+      <div class="loc-dot"></div>
+      <span class="loc-name">${escHtml(loc.name)}</span>
+      <button class="loc-del" title="حذف" onclick="deleteLocation('${escHtml(loc.id)}')">❌</button>
+    </div>`).join('');
+}
+
+async function deleteLocation(id) {
+  try {
+    await fetch(`/api/locations/${id}`, { method: 'DELETE' });
+    // SSE will broadcast; handle optimistically too
+    delete state.locations[id];
+    removeMarker(id);
+    renderLocList();
+  } catch (e) {
+    console.error('Delete location failed', e);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  SSE message handlers
+// ═══════════════════════════════════════════════════════════════════════════
+function handleSnapshot(data) {
+  const tgFeed = document.getElementById('tg-feed');
+  const twFeed = document.getElementById('tw-feed');
+
+  // Clear
+  tgFeed.innerHTML = '';
+  twFeed.innerHTML = '';
+
+  // Events (newest first from server already)
+  const tgItems = data.events.filter(e => e.source === 'telegram');
+  const twItems = data.events.filter(e => e.source === 'twitter');
+
+  // Render oldest-first so newest ends up on top after insertBefore loop
+  [...tgItems].reverse().forEach(item => {
+    state.tgItems.push(item);
+    prependCard(tgFeed, item);
+  });
+  [...twItems].reverse().forEach(item => {
+    state.twItems.push(item);
+    prependCard(twFeed, item);
+  });
+
+  if (!tgItems.length) tgFeed.innerHTML = '<div class="empty">در انتظار اخبار…</div>';
+  if (!twItems.length) twFeed.innerHTML = '<div class="empty">در انتظار اخبار…</div>';
+
+  document.getElementById('tg-count').textContent = tgItems.length;
+  document.getElementById('tw-count').textContent = twItems.length;
+
+  // Locations
+  data.locations.forEach(loc => {
+    state.locations[loc.id] = loc;
+    addMarker(loc);
+  });
+  renderLocList();
+}
+
+function handleNews(item) {
+  const tgFeed = document.getElementById('tg-feed');
+  const twFeed = document.getElementById('tw-feed');
+
+  if (item.source === 'telegram') {
+    state.tgItems.unshift(item);
+    prependCard(tgFeed, item);
+    document.getElementById('tg-count').textContent = state.tgItems.length;
+  } else {
+    state.twItems.unshift(item);
+    prependCard(twFeed, item);
+    document.getElementById('tw-count').textContent = state.twItems.length;
+  }
+}
+
+function handleLocationAdd(loc) {
+  state.locations[loc.id] = loc;
+  addMarker(loc);
+  renderLocList();
+}
+
+function handleLocationRemove({ id }) {
+  delete state.locations[id];
+  removeMarker(id);
+  renderLocList();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  SSE connection
+// ═══════════════════════════════════════════════════════════════════════════
+const connDot    = document.getElementById('conn-dot');
+const statusText = document.getElementById('status-text');
+let reconnectDelay = 2000;
+
+function setConnStatus(connected, msg) {
+  connDot.className = connected ? 'connected' : 'disconnected';
+  statusText.textContent = msg;
+}
+
+function connectSSE() {
+  setConnStatus(false, 'در حال اتصال…');
+  const es = new EventSource('/events');
+
+  es.onopen = () => {
+    reconnectDelay = 2000;
+    setConnStatus(true, 'اتصال برقرار — داده‌های زنده دریافت می‌شود');
+  };
+
+  es.onmessage = (e) => {
+    let msg;
+    try { msg = JSON.parse(e.data); } catch { return; }
+    switch (msg.type) {
+      case 'snapshot':       handleSnapshot(msg.data);      break;
+      case 'news':           handleNews(msg.data);           break;
+      case 'location_add':   handleLocationAdd(msg.data);   break;
+      case 'location_remove':handleLocationRemove(msg.data);break;
+    }
+    const now = new Date().toLocaleTimeString('fa-IR');
+    setConnStatus(true, `آخرین به‌روزرسانی: ${now}`);
+  };
+
+  es.onerror = () => {
+    es.close();
+    setConnStatus(false, `قطع اتصال — تلاش مجدد در ${reconnectDelay/1000}s…`);
+    setTimeout(connectSSE, reconnectDelay);
+    reconnectDelay = Math.min(reconnectDelay * 1.5, 30000);
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  Boot
+// ═══════════════════════════════════════════════════════════════════════════
+connectSSE();
+</script>
+<!-- Lightbox -->
+<div id="lightbox">
+  <button id="lightbox-close" onclick="closeLightbox()">✕</button>
+  <img id="lightbox-img" src="" alt="">
+  <div id="lightbox-caption"></div>
+</div>
+<script>
+function openLightbox(src, caption) {
+  document.getElementById('lightbox-img').src = src;
+  document.getElementById('lightbox-caption').textContent = caption || '';
+  document.getElementById('lightbox').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('open');
+  document.getElementById('lightbox-img').src = '';
+  document.body.style.overflow = '';
+}
+document.getElementById('lightbox').addEventListener('click', function(e) {
+  if (e.target === this) closeLightbox();
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
+</script>
+</body>
+</html>
