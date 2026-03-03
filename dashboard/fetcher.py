@@ -172,8 +172,8 @@ async def fetch_twitter_news() -> List[Dict]:
     # Try multiple Nitter instances in case one is down
     nitter_instances = [
         "https://nitter.net",
-        "https://nitter.privacydev.net",
-        "https://nitter.poast.org",
+        "https://nitter.1d4.us",
+        "https://nitter.kavin.rocks",
     ]
     list_path = "/i/lists/2028404706926813366"
 
