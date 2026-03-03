@@ -804,9 +804,10 @@ function buildCard(item) {
   const cardClass = isOfficial ? 'official' : isBreaking ? 'breaking' : isUnverified ? 'unverified' : '';
   const badgeClass = isTg ? 'badge-tg' : 'badge-tw';
   const badgeLabel = isTg ? `@${escHtml(item.channel)}` : escHtml(item.channel);
+  const proxyImg = src => `/api/proxy-img?url=${encodeURIComponent(src)}`;
   const imagesHtml = (item.images && item.images.length > 0)
     ? `<div class="card-images${item.images.length === 1 ? ' single' : ''}">
-        ${item.images.map(src => `<img src="${escHtml(src)}" class="card-img" loading="lazy" onerror="this.style.display='none'" onclick="openLightbox('${escHtml(src)}','${escHtml(item.channel||'')}')">`).join('')}
+        ${item.images.map(src => `<img src="${proxyImg(src)}" class="card-img" loading="lazy" onerror="this.style.display='none'" onclick="openLightbox('${proxyImg(src)}','${escHtml(item.channel||'')}')">`).join('')}
       </div>` : '';
   const videosHtml = (item.videos && item.videos.length > 0)
     ? `<div class="card-videos">${item.videos.map(v => `

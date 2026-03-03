@@ -279,6 +279,22 @@ async def inject_twitter(items: List[TwitterItem]):
     return {"injected": injected}
 
 
+@app.get("/api/proxy-img")
+async def proxy_image(url: str = ""):
+    """Proxy external images to bypass CORS."""
+    if not url:
+        raise HTTPException(400, "No URL")
+    try:
+        import httpx
+        async with httpx.AsyncClient(timeout=10, follow_redirects=True) as client:
+            r = await client.get(url, headers={"User-Agent": "Mozilla/5.0"})
+            content_type = r.headers.get("content-type", "image/jpeg")
+            from fastapi.responses import Response
+            return Response(content=r.content, media_type=content_type)
+    except Exception as e:
+        raise HTTPException(502, str(e))
+
+
 @app.get("/api/translate")
 async def translate_text(text: str = ""):
     """Translate text to Persian."""

@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>داشبورد اخبار جنگ — دیده‌بان</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0d0d0d; color: #e0e0e0; font-family: 'Segoe UI', Tahoma, sans-serif; height: 100vh; overflow: hidden; }
+
+  /* Header */
+  .header {
+    background: #111;
+    border-bottom: 1px solid #222;
+    padding: 8px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 48px;
+  }
+  .header h1 { font-size: 16px; color: #fff; letter-spacing: 1px; }
+  .live-badge {
+    display: flex; align-items: center; gap: 6px;
+    background: #1a0000; border: 1px solid #ff3333;
+    padding: 4px 12px; border-radius: 20px;
+    font-size: 12px; color: #ff4444; font-weight: bold;
+  }
+  .live-dot { width: 8px; height: 8px; background: #ff3333; border-radius: 50%; animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .header-time { font-size: 12px; color: #666; }
+
+  /* Main layout */
+  .main { display: grid; grid-template-columns: 1fr 1.4fr 1fr; height: calc(100vh - 48px); gap: 1px; background: #1a1a1a; }
+
+  /* Panels */
+  .panel { background: #0d0d0d; display: flex; flex-direction: column; }
+  .panel-header {
+    padding: 10px 14px;
+    background: #111;
+    border-bottom: 1px solid #222;
+    font-size: 13px;
+    font-weight: bold;
+    color: #aaa;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .panel-icon { font-size: 16px; }
+  .panel-body { flex: 1; overflow-y: auto; padding: 10px; }
+  .panel-body::-webkit-scrollbar { width: 4px; }
+  .panel-body::-webkit-scrollbar-track { background: #111; }
+  .panel-body::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+
+  /* News cards */
+  .news-card {
+    background: #141414;
+    border: 1px solid #222;
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 10px;
+    transition: border-color 0.2s;
+  }
+  .news-card:hover { border-color: #444; }
+  .news-card.official { border-left: 3px solid #f0b429; }
+  .news-card.breaking { border-left: 3px solid #ff3333; }
+
+  .card-meta {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 8px;
+  }
+  .card-source { font-size: 11px; color: #666; }
+  .card-time { font-size: 11px; color: #555; }
+  .card-badge {
+    font-size: 10px; padding: 2px 8px; border-radius: 10px;
+    margin-bottom: 6px; display: inline-block;
+  }
+  .badge-official { background: #2a1f00; color: #f0b429; border: 1px solid #f0b429; }
+  .badge-breaking { background: #1a0000; color: #ff4444; border: 1px solid #ff3333; }
+  .badge-unverified { background: #1a1a2a; color: #7777ff; border: 1px solid #5555cc; }
+
+  .card-text { font-size: 13px; line-height: 1.6; color: #ccc; direction: rtl; }
+  .card-question { font-size: 12px; color: #888; margin-top: 6px; }
+  .card-answer { font-size: 13px; color: #ddd; margin-top: 4px; }
+
+  /* Map panel */
+  .map-panel { display: flex; flex-direction: column; }
+  #map { flex: 1; min-height: 0; }
+  .locations-panel {
+    background: #111;
+    border-top: 1px solid #222;
+    max-height: 160px;
+    overflow-y: auto;
+  }
+  .locations-header { padding: 8px 14px; font-size: 12px; color: #666; border-bottom: 1px solid #1a1a1a; }
+  .location-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 6px 14px;
+    border-bottom: 1px solid #1a1a1a;
+    font-size: 12px;
+  }
+  .location-item:hover { background: #161616; }
+  .location-name { color: #ccc; }
+  .location-time { color: #555; font-size: 11px; }
+  .location-delete {
+    background: none; border: none; color: #ff4444; cursor: pointer;
+    font-size: 14px; padding: 0 4px; opacity: 0.6;
+  }
+  .location-delete:hover { opacity: 1; }
+  .location-dot { width: 8px; height: 8px; background: #ff3333; border-radius: 50%; margin-left: 8px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🔭 دیده‌بان — داشبورد اخبار</h1>
+  <div class="live-badge"><div class="live-dot"></div> LIVE</div>
+  <div class="header-time" id="clock"></div>
+</div>
+
+<div class="main">
+
+  <!-- Left: Telegram -->
+  <div class="panel">
+    <div class="panel-header"><span class="panel-icon">📡</span> اخبار تلگرام</div>
+    <div class="panel-body">
+
+      <div class="news-card breaking">
+        <div class="card-meta">
+          <span class="card-source">@SaberinFa</span>
+          <span class="card-time">۱۶:۱۸</span>
+        </div>
+        <span class="card-badge badge-breaking">🔴 فوری</span>
+        <div class="card-text">گزارش‌های اولیه از شنیده شدن صدای انفجار در جنوب بیروت. علت هنوز مشخص نیست.</div>
+      </div>
+
+      <div class="news-card official">
+        <div class="card-meta">
+          <span class="card-source">@defender_iran</span>
+          <span class="card-time">۱۶:۰۵</span>
+        </div>
+        <span class="card-badge badge-official">🎙️ اظهار رسمی</span>
+        <div class="card-text">سخنگوی ارتش اسرائیل:</div>
+        <div class="card-question">❓ آیا این حمله پاسخ به موشک‌های ایران بود؟</div>
+        <div class="card-answer">💬 «تمام اقدامات ما در چارچوب دفاع مشروع است و ادامه خواهد یافت.»</div>
+      </div>
+
+      <div class="news-card">
+        <div class="card-meta">
+          <span class="card-source">@ManotoTV</span>
+          <span class="card-time">۱۵:۵۲</span>
+        </div>
+        <span class="card-badge badge-unverified">❓ تأییدنشده</span>
+        <div class="card-text">منابع مردمی از استقرار نیروهای بسیج در یک مدرسه در قزوین خبر می‌دهند.</div>
+      </div>
+
+      <div class="news-card">
+        <div class="card-meta">
+          <span class="card-source">@tehran_timse</span>
+          <span class="card-time">۱۵:۴۰</span>
+        </div>
+        <div class="card-text">موج انفجار ناشی از اصابت موشک در اردن در شعاع چند کیلومتری احساس شد. تلفات گزارش نشده است.</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Middle: Map -->
+  <div class="map-panel">
+    <div class="panel-header"><span class="panel-icon">🗺️</span> نقشه حوادث</div>
+    <div id="map"></div>
+    <div class="locations-panel">
+      <div class="locations-header">📍 لوکیشن‌های فعال — کلیک برای حذف</div>
+      <div class="location-item">
+        <div style="display:flex;align-items:center"><div class="location-dot"></div><span class="location-name">بیروت، لبنان</span></div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="location-time">۱۶:۱۸</span>
+          <button class="location-delete">✕</button>
+        </div>
+      </div>
+      <div class="location-item">
+        <div style="display:flex;align-items:center"><div class="location-dot"></div><span class="location-name">اردن</span></div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="location-time">۱۵:۴۰</span>
+          <button class="location-delete">✕</button>
+        </div>
+      </div>
+      <div class="location-item">
+        <div style="display:flex;align-items:center"><div class="location-dot"></div><span class="location-name">قزوین، ایران</span></div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="location-time">۱۵:۵۲</span>
+          <button class="location-delete">✕</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: Twitter/X -->
+  <div class="panel">
+    <div class="panel-header"><span class="panel-icon">𝕏</span> توییتر — Iran War News</div>
+    <div class="panel-body" dir="ltr">
+
+      <div class="news-card official">
+        <div class="card-meta">
+          <span class="card-source">@Dideban1995</span>
+          <span class="card-time">16:15</span>
+        </div>
+        <span class="card-badge badge-official">🎙️ Official</span>
+        <div class="card-text" dir="ltr">Netanyahu: "Israel will respond to any threat decisively. The operation continues."</div>
+      </div>
+
+      <div class="news-card breaking">
+        <div class="card-meta">
+          <span class="card-source">@WarMonitor</span>
+          <span class="card-time">16:10</span>
+        </div>
+        <span class="card-badge badge-breaking">🔴 Breaking</span>
+        <div class="card-text" dir="ltr">BREAKING: Multiple explosions reported near Amman. Cause unknown. Awaiting confirmation.</div>
+      </div>
+
+      <div class="news-card">
+        <div class="card-meta">
+          <span class="card-source">@IranObserver</span>
+          <span class="card-time">15:58</span>
+        </div>
+        <div class="card-text" dir="ltr">Iran's IRGC releases statement claiming successful missile strikes on designated military targets.</div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+// Clock
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent = now.toLocaleTimeString('fa-IR');
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// Map
+const map = L.map('map').setView([32, 42], 5);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  attribution: '© CartoDB',
+  subdomains: 'abcd'
+}).addTo(map);
+
+// Sample locations
+const locations = [
+  { name: 'بیروت', lat: 33.8886, lon: 35.4955 },
+  { name: 'اردن', lat: 31.9539, lon: 35.9106 },
+  { name: 'قزوین', lat: 36.2688, lon: 50.0041 },
+];
+
+locations.forEach(loc => {
+  L.circleMarker([loc.lat, loc.lon], {
+    radius: 10,
+    fillColor: '#ff3333',
+    color: '#ff0000',
+    weight: 2,
+    opacity: 0.9,
+    fillOpacity: 0.6
+  }).addTo(map).bindPopup(`<b>${loc.name}</b>`);
+});
+
+// Delete buttons
+document.querySelectorAll('.location-delete').forEach(btn => {
+  btn.addEventListener('click', function() {
+    this.closest('.location-item').style.opacity = '0.3';
+  });
+});
+</script>
+</body>
+</html>
