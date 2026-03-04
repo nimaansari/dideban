@@ -2,7 +2,7 @@
 <html lang="fa" dir="rtl">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
   <title>دیده‌بان | داشبورد اخبار زنده</title>
 
   <!-- Leaflet -->
@@ -415,6 +415,82 @@
       font-size: 12px;
       padding: 32px 12px;
     }
+
+    /* ── Mobile tabs ──────────────────────────────────────────────────── */
+    #mobile-tabs {
+      display: none;
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      z-index: 999;
+      background: var(--bg);
+      border-top: 1px solid var(--border);
+      height: 56px;
+    }
+    .mob-tab {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      color: var(--dim);
+      cursor: pointer;
+      gap: 3px;
+      border: none;
+      background: none;
+      padding: 0;
+    }
+    .mob-tab .ti { font-size: 20px; }
+    .mob-tab.active { color: var(--accent); }
+
+    /* ── Responsive ───────────────────────────────────────────────────── */
+    @media (max-width: 768px) {
+      html, body { overflow: auto; }
+
+      #header {
+        height: 48px;
+        padding: 0 12px;
+      }
+      #header .logo .logo-main { font-size: 15px; }
+      #header .logo .logo-sub { display: none; }
+      .header-center { display: none; }
+      #clock { font-size: 11px; }
+
+      #layout {
+        display: block;
+        height: auto;
+        min-height: calc(100vh - 48px - 32px);
+      }
+
+      .panel {
+        display: none;
+        border-left: none;
+        border-top: 1px solid var(--border);
+        height: calc(100vh - 48px - 56px);
+        overflow: hidden;
+      }
+      .panel.active { display: flex; }
+
+      #map { height: calc(100vh - 48px - 44px - 56px); }
+
+      #stats-bar {
+        display: none;
+      }
+
+      #mobile-tabs {
+        display: flex;
+      }
+
+      body { padding-bottom: 56px; }
+
+      .panel-header .filter-pills { display: none; }
+    }
+
+    @media (max-width: 480px) {
+      .news-card { padding: 8px 10px; }
+      .card-text { font-size: 12px; }
+      .badge-channel { font-size: 9px; }
+    }
   </style>
 </head>
 <body>
@@ -442,7 +518,7 @@
 <div id="layout">
 
   <!-- ── Left panel: Telegram ───────────────────────────────────────── -->
-  <div class="panel">
+  <div class="panel active" id="panel-tg">
     <div class="panel-header">
       <span class="ph-icon">📡</span>
       <h2>TELEGRAM INTEL</h2>
@@ -460,7 +536,7 @@
   </div>
 
   <!-- ── Middle panel: Map ──────────────────────────────────────────── -->
-  <div class="panel" id="map-panel">
+  <div class="panel" id="panel-map">
     <div class="panel-header">
       <span class="ph-icon">🗺</span>
       <h2>LIVE OPERATIONS MAP</h2>
@@ -470,7 +546,7 @@
   </div>
 
   <!-- ── Right panel: Twitter / X ───────────────────────────────────── -->
-  <div class="panel">
+  <div class="panel" id="panel-tw">
     <div class="panel-header">
       <span class="ph-icon">𝕏</span>
       <h2>INTELLIGENCE FEED</h2>
@@ -487,6 +563,22 @@
   </div>
 
 </div><!-- /#layout -->
+
+<!-- Mobile tab bar -->
+<div id="mobile-tabs">
+  <button class="mob-tab active" onclick="showTab('tg')">
+    <span class="ti">📡</span>
+    <span>تلگرام</span>
+  </button>
+  <button class="mob-tab" onclick="showTab('map')">
+    <span class="ti">🗺</span>
+    <span>نقشه</span>
+  </button>
+  <button class="mob-tab" onclick="showTab('tw')">
+    <span class="ti">𝕏</span>
+    <span>فید</span>
+  </button>
+</div>
 
 <!-- Stats footer -->
 <div id="stats-bar">
@@ -1041,6 +1133,23 @@ function filterFeed(panel, type, btn) {
   feed.querySelectorAll('.news-card').forEach(card => {
     if (type === 'all') { card.style.display = ''; return; }
     card.style.display = card.classList.contains(type) ? '' : 'none';
+  });
+}
+
+// Mobile tab switching
+function showTab(tab) {
+  ['tg','map','tw'].forEach(t => {
+    const panel = document.getElementById('panel-' + t) || document.getElementById('map-panel');
+    if (panel) panel.classList.remove('active');
+  });
+  const target = document.getElementById('panel-' + tab);
+  if (target) {
+    target.classList.add('active');
+    // Trigger map resize when switching to map tab
+    if (tab === 'map' && window.map) setTimeout(() => map.invalidateSize(), 100);
+  }
+  document.querySelectorAll('.mob-tab').forEach((btn, i) => {
+    btn.classList.toggle('active', ['tg','map','tw'][i] === tab);
   });
 }
 
